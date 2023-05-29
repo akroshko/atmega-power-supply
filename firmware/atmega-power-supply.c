@@ -100,6 +100,41 @@ void lcd_send_data(unsigned char data) {
   _delay_us(100);
 }
 
+void lcd_set_4bit_mode(void) {
+        lcd_send_instruction(0x02);
+}
+
+void lcd_2line_init(void) {
+        lcd_send_instruction(0x28);
+}
+
+void lcd_clear_init(void) {
+  // cursor and clear
+  lcd_send_instruction(0x0c);
+  lcd_send_instruction(0x06);
+  lcd_send_instruction(0x01);
+  _delay_ms(2);
+  lcd_send_instruction(0x80);
+  _delay_ms(2);
+}
+
+void lcd_next_line(void) {
+  lcd_send_instruction(0xC0);
+}
+
+void lcd_clear(void) {
+  lcd_send_instruction(0x01);
+  lcd_send_instruction(0x80);
+}
+
+void lcd_first_line(void) {
+  lcd_send_instruction(0x83);
+}
+
+void lcd_second_line(void) {
+  lcd_send_instruction(0xC3);
+}
+
 void lcd_send_string(char *str) {
   for (int i=0; str[i]!=0; i++) {
     if (str[i] == ' ') {
@@ -167,40 +202,27 @@ void i_count () {
 }
 
 float pwm_to_current_limit (int pwm) {
-        float fraction = 5.0 * ((float)pwm/(float)1024);
-        float current_limit=(fraction*5.0/10.0);
-        return current_limit;
+  float fraction = 5.0 * ((float)pwm/(float)1024);
+  float current_limit=(fraction*5.0/10.0);
+  return current_limit;
 }
 
 float pwm_to_voltage (int pwm) {
-        float fraction_voltage = 5.0 * ((float)pwm/(float)1024);
-        float regulated_voltage=(2.0*fraction_voltage)+1.25;
-        return regulated_voltage;
+  float fraction_voltage = 5.0 * ((float)pwm/(float)1024);
+  float regulated_voltage=(2.0*fraction_voltage)+1.25;
+  return regulated_voltage;
 }
 
 int main(void) {
   // TODO: setup
   DDRD |= PORT_DIRECTION_MASK;
   _delay_ms(50);
-  // set to 4 bit mode
-  lcd_send_instruction(0x02);
-  // set to 2 lines and appropriate font
-  lcd_send_instruction(0x28);
-  // cursor and clear
-  lcd_send_instruction(0x0c);
-  lcd_send_instruction(0x06);
-  lcd_send_instruction(0x01);
-  _delay_ms(2);
-  lcd_send_instruction(0x80);
-  _delay_ms(2);
+  lcd_set_4bit_mode();
+  lcd_clear_init();
   lcd_send_string("Starting...");
   _delay_ms(3000);
-  // next line
-  lcd_send_instruction(0xC0);
-  // this is a unique test string
-  /* lcd_send_string("1234-5678-90"); */
-  /* _delay_ms(3000); */
-  // test out floating point
+  lcd_next_line();
+  // this is a unique test string that makes sure floating point is working correctly
   float test_float=5.123;
   sprintf(display_string, "%.4f", test_float);
   lcd_send_string(display_string);
@@ -224,22 +246,19 @@ int main(void) {
   TCCR1B=_BV(CS10) | _BV(WGM12) | _BV(CS10);
   OCR1A=INITIAL_V;
   OCR1B=INITIAL_I;
-
   // finally clear out the LCD display
-  lcd_send_instruction(0x01);
-  lcd_send_instruction(0x80);
+  lcd_clear();
   // add the I and V
   lcd_send_string("I: ");
-  lcd_send_instruction(0xC0);
+  lcd_next_line();
   lcd_send_string("V: ");
   // move to first line
-  lcd_send_instruction(0x83);
+  lcd_first_line();
   i_actual=pwm_to_current_limit(INITIAL_I);
   sprintf(display_string,"%02.3fA %04d",i_actual,INITIAL_I);
   lcd_send_string(display_string);
   // move to second line
-  lcd_send_instruction(0xC3);
-
+  lcd_second_line();
   v_actual=pwm_to_voltage(INITIAL_V);
   sprintf(display_string,"%02.3fV %04d",v_actual,INITIAL_V);
   lcd_send_string(display_string);
@@ -249,13 +268,12 @@ int main(void) {
     v_count();
     i_count();
     if (last_v_display != v_counter || last_i_display != i_counter) {
-      // move to first line
-      lcd_send_instruction(0x83);
+      lcd_first_line();
       i_actual=pwm_to_current_limit(i_counter);
       sprintf(display_string,"%02.3fA %04d",i_actual,i_counter);
       lcd_send_string(display_string);
       // move to second line
-      lcd_send_instruction(0xC3);
+      lcd_second_line();
       v_actual=pwm_to_voltage(v_counter);
       sprintf(display_string,"%02.3fV %04d",v_actual,v_counter);
       lcd_send_string(display_string);
