@@ -42,31 +42,8 @@
 #define INITIAL_I 0
 #define INITIAL_V 0
 
-int current_time;
-int last_display = -9999;
-volatile int i_counter = INITIAL_I;
-int i_counter_old = INITIAL_I;
-volatile int v_counter = INITIAL_V;
-int v_counter_old = INITIAL_V;
-volatile int i_current_state;
-volatile int i_current_state_2;
-volatile int v_current_state;
-volatile int v_current_state_2;
-
-volatile int i_last_state;
-volatile int v_last_state;
-
-int i_full_scale=256;
-int v_full_scale=1023;
-
-
-int last_i_display=-1;
-int last_v_display=-1;
-
-float i_actual=-1.0;
-float v_actual=-1.0;
-
-char display_string[16];
+const int i_full_scale=256;
+const int v_full_scale=1023;
 
 void lcd_send_instruction(unsigned char instruction) {
   PORTD = (PORTD & NDB_MASK) | (instruction & UPPERMASK);
@@ -101,11 +78,11 @@ void lcd_send_data(unsigned char data) {
 }
 
 void lcd_set_4bit_mode(void) {
-        lcd_send_instruction(0x02);
+  lcd_send_instruction(0x02);
 }
 
 void lcd_2line_init(void) {
-        lcd_send_instruction(0x28);
+  lcd_send_instruction(0x28);
 }
 
 void lcd_clear_init(void) {
@@ -145,59 +122,63 @@ void lcd_send_string(char *str) {
   }
 }
 
-void v_count () {
-  v_current_state=(PINC & P_ROT_V_CLK) >> P_ROT_V_CLK_S;
-  v_current_state_2=(PINC & P_ROT_V_DT) >> P_ROT_V_DT_S;
-  if(v_current_state != v_last_state) {
-    if(v_current_state_2 != v_current_state) {
-#if V_DIRECTION == 0
-      if (v_counter < v_full_scale) {
-        v_counter++;
+void i_count (volatile int *i_counter, volatile int *i_last_state) {
+  volatile int i_current_state;
+  volatile int i_current_state_2;
+  i_current_state=(PINC & P_ROT_I_CLK) >> P_ROT_I_CLK_S;
+  i_current_state_2=(PINC & P_ROT_I_DT) >> P_ROT_I_DT_S;
+  if(i_current_state != *i_last_state) {
+    if(i_current_state_2 != i_current_state) {
+#if I_DIRECTION == 0
+      if (*i_counter < i_full_scale) {
+        (*i_counter)++;
       }
     } else {
-      if (v_counter > 0) {
-        v_counter--;
+      if (*i_counter > 0) {
+        (*i_counter)--;
       }
 #else
-      if (v_counter > 0) {
-        v_counter--;
+      if (*i_counter > 0) {
+        (*i_counter)--;
       }
     } else {
-      if (v_counter < v_full_scale) {
-        v_counter++;
+      if ((*i_counter) < i_full_scale) {
+        (*i_counter)++;
       }
 #endif
     }
-    OCR1A=v_counter;
-    v_last_state = v_current_state;
+    OCR1B=*i_counter;
+    *i_last_state = i_current_state;
   }
 }
 
-void i_count () {
-  i_current_state=(PINC & P_ROT_I_CLK) >> P_ROT_I_CLK_S;
-  i_current_state_2=(PINC & P_ROT_I_DT) >> P_ROT_I_DT_S;
-  if(i_current_state != i_last_state) {
-    if(i_current_state_2 != i_current_state) {
-#if I_DIRECTION == 0
-      if (i_counter < i_full_scale) {
-        i_counter++;
+void v_count (volatile int *v_counter, volatile int *v_last_state) {
+  volatile int v_current_state;
+  volatile int v_current_state_2;
+  v_current_state=(PINC & P_ROT_V_CLK) >> P_ROT_V_CLK_S;
+  v_current_state_2=(PINC & P_ROT_V_DT) >> P_ROT_V_DT_S;
+  if(v_current_state != *v_last_state) {
+    if(v_current_state_2 != v_current_state) {
+#if V_DIRECTION == 0
+      if (*v_counter < v_full_scale) {
+        (*v_counter)++;
       }
     } else {
-      if (i_counter > 0) {
-        i_counter--;
+      if (*v_counter > 0) {
+        (*v_counter)--;
       }
 #else
-      if (i_counter > 0) {
-        i_counter--;
+      if (*v_counter > 0) {
+        (*v_counter)--;
       }
     } else {
-      if (i_counter < i_full_scale) {
-        i_counter++;
+      if (*v_counter < v_full_scale) {
+        (*v_counter)++;
       }
 #endif
     }
-    OCR1B=i_counter;
-    i_last_state = i_current_state;
+    OCR1A=*v_counter;
+    *v_last_state = v_current_state;
   }
 }
 
@@ -214,6 +195,19 @@ float pwm_to_voltage (int pwm) {
 }
 
 int main(void) {
+  volatile int i_counter = INITIAL_I;
+  volatile int v_counter = INITIAL_V;
+
+  volatile int i_last_state;
+  volatile int v_last_state;
+
+  int last_i_display=-1;
+  int last_v_display=-1;
+
+  float i_actual=-1.0;
+  float v_actual=-1.0;
+
+  char display_string[16];
   // TODO: setup
   DDRD |= PORT_DIRECTION_MASK;
   _delay_ms(50);
@@ -265,8 +259,8 @@ int main(void) {
   // the main loop
   while (1) {
     // let's count with the rotary encoder
-    v_count();
-    i_count();
+    i_count(&i_counter, &i_last_state);
+    v_count(&v_counter, &v_last_state);
     if (last_v_display != v_counter || last_i_display != i_counter) {
       lcd_first_line();
       i_actual=pwm_to_current_limit(i_counter);
