@@ -23,3 +23,4 @@ at some point.
 - test prototype under different loads
 - add a model to calibrate to in software
 - use an easier-to-get LCD display
+- add a bill of materials
