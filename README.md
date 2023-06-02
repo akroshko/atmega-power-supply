@@ -7,7 +7,7 @@ ubiquitous components such as the LM317 voltage regulator, LM358 or
 ATMega328 microcontroller.
 
 The design is loosely based off of
-[https://www.youtube.com/playlist?list=PLBF35875F73B5C9B5][https://www.youtube.com/playlist?list=PLBF35875F73B5C9B5]
+[https://www.youtube.com/playlist?list=PLBF35875F73B5C9B5](https://www.youtube.com/playlist?list=PLBF35875F73B5C9B5)
 by EEVblog.  However, it uses components I cannot obtain such as the
 LT3080.
 
